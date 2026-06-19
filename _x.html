@@ -161,7 +161,7 @@ Promise.all(ENTITIES.map(e=>fetch('data/'+e.id+'.json').then(r=>r.ok?r.json():nu
     +`<div class="ent" data-e="__cross__" style="--ec:#1d4ed8;background:#eff6ff"><div class="nm">🔗 Cross Analysis</div><div class="rl">lintas 5 entitas</div><div class="vol">irisan · jaringan · isu bersama</div></div>`;
   document.querySelectorAll('.ent').forEach(el=>el.onclick=()=>{
     if(el.dataset.e==='__cross__'){showCross(el);} else {render(el.dataset.e);}});
-  if(avail.length) render(avail[0].id);
+  if(avail.length){render(avail[0].id);setTimeout(()=>{document.getElementById("perView").style.display="none";document.getElementById("crossView").style.display="";renderCross();},150);}
 });
 
 const ENT_NAMES={A_kdm:['dedi','mulyadi','kdm'],B_herman:['herman','suryatman'],C_erwan:['erwan','setiawan'],D_purwanto:['purwanto'],E_pu:['bina marga','dputr','pekerjaan umum','sda']};
@@ -206,12 +206,12 @@ function renderCross(){
       data:D.map(x=>{const dist=(x.d.argmining||{}).dist||[];const f=dist.find(z=>z.name===cat);return f?f.pct:0;})}))});
   // scatter sentiment vs volume
   mk('xScatter',{grid:{left:8,right:14,top:14,bottom:30,containLabel:true},
-    tooltip:{formatter:p=>`${p.value[3]}<br/>volume ${fmt(p.value[0])} · net ${p.value[1]}%`},
+    tooltip:{formatter:p=>`${p.data[3]}<br/>volume ${fmt(p.data[0])} · net ${p.data[1]}%`},
     xAxis:{type:'log',name:'volume (berita+komentar)',nameLocation:'middle',nameGap:24,...AX,axisLabel:{color:'#6b7280',formatter:v=>fmt(v)}},
     yAxis:{type:'value',name:'sentimen net %',...AX,axisLabel:{formatter:'{value}%',color:'#6b7280'}},
     series:[{type:'scatter',data:D.map(x=>{const vol=(x.d.n_news||0)+(x.d.n_comments||0)+1;const net=(x.d.sentiment||{}).net||0;const vid=(x.d.youtube||{}).n_videos||0;
       return {value:[vol,net,vid,x.nm],itemStyle:{color:ECOL[x.id]},symbolSize:Math.max(14,Math.min(50,8+vid/4))};}),
-      label:{show:true,formatter:p=>(p.value[3]||'').split(' ')[0],position:'top',fontSize:10,color:'#374151'}}]});
+      label:{show:true,formatter:p=>p.data[3].split(' ')[0],position:'top',fontSize:10,color:'#374151'}}]});
   // cross-entity figures (PER appearing in >=2 entity corpora)
   const perMap={};
   D.forEach(x=>{((x.d.ner||{}).PER||[]).forEach(e=>{const k=e.name;(perMap[k]=perMap[k]||{ents:new Set(),c:0});perMap[k].ents.add(x.nm);perMap[k].c+=e.count;});});
