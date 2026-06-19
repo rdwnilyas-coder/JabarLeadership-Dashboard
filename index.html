@@ -80,6 +80,12 @@
       <div id="cWords" class="chart"></div></div>
   </div>
 
+  <div class="grid three" id="crossIntraWrap" style="display:none">
+    <div class="panel"><h3>🎭 Sentimen per Tokoh</h3><div class="desc">NER × sentimen — tokoh dibicarakan positif (hijau) / negatif (merah)</div><div id="cEntSen" class="chart tall"></div></div>
+    <div class="panel"><h3>🧩 Sentimen per Topik</h3><div class="desc">topik mana memicu sentimen negatif</div><div id="cTopSen" class="chart tall"></div></div>
+    <div class="panel"><h3>🗣️ Argumen × Sentimen</h3><div class="desc">komposisi sentimen tiap tipe argumen</div><div id="cArgSen" class="chart tall"></div></div>
+  </div>
+
   <div id="ytWrap">
     <div class="grid">
       <div class="panel"><h3>🎬 Channel Paling Aktif</h3><div class="desc">Channel terbanyak unggah video</div><div id="cYtChannel" class="chart"></div></div>
@@ -313,6 +319,24 @@ function render(eid){
   } else { document.getElementById('ytWrap').style.display='none'; }
   // words
   barH('cWords',(d.news_words||[]).map(w=>({n:w.value,name:w.name})),'n','name',col);
+  // cross intra-entity (sentimen per tokoh / per topik / argumen x sentimen)
+  const es=d.entity_sentiment, ts=d.topic_sentiment, axs=d.arg_sentiment;
+  const divbar=(id,items,lk)=>{const it=items.slice(0,12);mk(id,{grid:{left:8,right:38,top:8,bottom:8,containLabel:true},
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>`${it[p[0].dataIndex][lk]}<br/>net ${p[0].value>0?'+':''}${p[0].value}% (n=${it[p[0].dataIndex].n})`},
+    xAxis:{type:'value',axisLabel:{formatter:'{value}%',color:'#6b7280'},...AX},
+    yAxis:{type:'category',data:it.map(x=>x[lk]),...AX,axisLabel:{color:'#374151',width:lk==='label'?150:115,overflow:lk==='label'?'break':'truncate',fontSize:9}},
+    series:[{type:'bar',data:it.map(x=>({value:x.net,itemStyle:{color:x.net>=0?'#059669':'#dc2626',borderRadius:x.net>=0?[0,4,4,0]:[4,0,0,4]}})),label:{show:true,position:'right',formatter:p=>(p.value>0?'+':'')+p.value+'%',color:'#6b7280',fontSize:9}}]});};
+  const noData=id=>mk(id,{title:{text:'data kurang',left:'center',top:'center',textStyle:{color:'#9ca3af',fontSize:12}}});
+  if(es||ts||axs){
+    document.getElementById('crossIntraWrap').style.display='';
+    (es&&es.length)?divbar('cEntSen',es.slice().sort((a,b)=>a.net-b.net),'name'):noData('cEntSen');
+    (ts&&ts.length)?divbar('cTopSen',ts.slice(),'label'):noData('cTopSen');
+    if(axs&&Object.keys(axs).length){const cats=Object.keys(axs);
+      mk('cArgSen',{grid:{left:8,right:14,top:28,bottom:8,containLabel:true},tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},legend:{top:0,textStyle:{color:'#6b7280',fontSize:9}},
+        yAxis:{type:'category',data:cats,...AX,axisLabel:{color:'#374151',fontSize:9,width:90,overflow:'truncate'}},xAxis:{type:'value',...AX},
+        series:[['Positif','pos','#059669'],['Netral','neu','#9ca3af'],['Negatif','neg','#dc2626']].map(([nm,k,c])=>({name:nm,type:'bar',stack:'s',itemStyle:{color:c},data:cats.map(ct=>axs[ct][k]||0)}))});
+    } else noData('cArgSen');
+  } else document.getElementById('crossIntraWrap').style.display='none';
   // arg samples
   let as='';
   if(arg.samples){for(const k in arg.samples){const arr=arg.samples[k];if(arr&&arr.length){as+=`<div class="cmt"><div class="top"><b>${esc(k)}</b><span>${(arr[0].score*100).toFixed(0)}%</span></div><div class="body">"${esc(arr[0].text)}"</div></div>`;}}}
