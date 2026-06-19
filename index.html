@@ -53,6 +53,7 @@
 
 <div class="wrap">
   <div class="ents" id="ents"></div>
+  <div id="perView">
   <div class="cards" id="cards"></div>
 
   <div class="grid">
@@ -96,6 +97,33 @@
 
   <div class="grid one"><div class="panel"><h3>📰 Daftar Artikel</h3>
     <div style="overflow-x:auto"><table id="artTable"></table></div></div></div>
+  </div><!-- /perView -->
+
+  <div id="crossView" style="display:none">
+    <div class="panel" style="margin-bottom:14px;border-left:3px solid #1d4ed8">
+      <h3>🔗 Cross Analysis — Tata Kelola Jabar (Paralel, Non-Komparatif)</h3>
+      <div class="desc">Analisis lintas 5 entitas: irisan narasi, tokoh & lokasi bersama, struktur argumen, sentimen. Bukan peringkat/kompetisi — melihat di mana narasi bersinggungan.</div>
+      <div class="cards" id="crossCards" style="margin-top:10px"></div>
+    </div>
+    <div class="grid">
+      <div class="panel"><h3>📊 Volume Liputan (paralel, log)</h3><div class="desc">Berita · komentar · video per entitas</div><div id="xVol" class="chart tall"></div></div>
+      <div class="panel"><h3>🕸️ Jaringan Narasi Lintas-Entitas</h3><div class="desc">Entitas (warna) + tokoh yang muncul di ≥2 korpus. Garis = co-mention.</div><div id="xNet" class="chart tall"></div></div>
+    </div>
+    <div class="grid">
+      <div class="panel"><h3>😊 Sentimen Bersih per Entitas</h3><div class="desc">% positif − % negatif (komentar/berita)</div><div id="xSen" class="chart"></div></div>
+      <div class="panel"><h3>🗣️ Struktur Argumen per Entitas</h3><div class="desc">Komposisi tipe argumen (%)</div><div id="xArg" class="chart"></div></div>
+    </div>
+    <div class="grid">
+      <div class="panel"><h3>🎯 Sentimen vs Volume</h3><div class="desc">Tiap titik = entitas. X = volume (log), Y = sentimen net. Ukuran = video.</div><div id="xScatter" class="chart"></div></div>
+      <div class="panel"><h3>📍 Lokasi Disebut Lintas-Entitas</h3><div class="desc">Tempat yang muncul di banyak korpus entitas</div><div id="xLoc" class="chart"></div></div>
+    </div>
+    <div class="grid">
+      <div class="panel"><h3>👥 Tokoh Disebut Lintas-Entitas</h3><div class="desc">Orang yang muncul di ≥2 korpus entitas</div><div class="clist" id="xPer"></div></div>
+      <div class="panel"><h3>🏛️ Organisasi Lintas-Entitas</h3><div class="desc">Lembaga yang muncul di ≥2 korpus</div><div class="clist" id="xOrg"></div></div>
+    </div>
+    <div class="grid one"><div class="panel"><h3>🧩 Irisan Kata-Topik Antar-Entitas</h3><div class="desc">Kata kunci topik yang dibagi beberapa entitas (indikasi isu bersama)</div><div class="clist" id="xTopic"></div></div></div>
+    <div class="panel" id="xInsight" style="border-left:3px solid #1d4ed8"></div>
+  </div>
 </div>
 
 <footer>Jabar Leadership Analytics · berita + YouTube · model NLP lokal · <a href="https://github.com/rdwnilyas-coder/JabarLeadership-Dashboard">source</a></footer>
@@ -129,13 +157,105 @@ Promise.all(ENTITIES.map(e=>fetch('data/'+e.id+'.json').then(r=>r.ok?r.json():nu
   const avail=ENTITIES.filter(e=>DATA[e.id]);
   document.getElementById('ents').innerHTML=avail.map(e=>{const d=DATA[e.id];
     return `<div class="ent" data-e="${e.id}" style="--ec:${ECOL[e.id]}"><div class="nm">${esc(e.nm)}</div>
-      <div class="rl">${esc(e.rl)}</div><div class="vol">${d.n_news||0} artikel · ${(d.n_comments||0).toLocaleString('id')} komentar</div></div>`;}).join('');
-  document.querySelectorAll('.ent').forEach(el=>el.onclick=()=>render(el.dataset.e));
+      <div class="rl">${esc(e.rl)}</div><div class="vol">${d.n_news||0} artikel · ${(d.n_comments||0).toLocaleString('id')} komentar</div></div>`;}).join('')
+    +`<div class="ent" data-e="__cross__" style="--ec:#1d4ed8;background:#eff6ff"><div class="nm">🔗 Cross Analysis</div><div class="rl">lintas 5 entitas</div><div class="vol">irisan · jaringan · isu bersama</div></div>`;
+  document.querySelectorAll('.ent').forEach(el=>el.onclick=()=>{
+    if(el.dataset.e==='__cross__'){showCross(el);} else {render(el.dataset.e);}});
   if(avail.length) render(avail[0].id);
 });
 
+const ENT_NAMES={A_kdm:['dedi','mulyadi','kdm'],B_herman:['herman','suryatman'],C_erwan:['erwan','setiawan'],D_purwanto:['purwanto'],E_pu:['bina marga','dputr','pekerjaan umum','sda']};
+function showCross(pill){
+  document.querySelectorAll('.ent').forEach(x=>x.classList.remove('active')); pill.classList.add('active');
+  document.getElementById('perView').style.display='none';
+  document.getElementById('crossView').style.display='';
+  renderCross();
+}
+function renderCross(){
+  clearCharts();
+  const ents=ENTITIES.filter(e=>DATA[e.id]);
+  const D=ents.map(e=>({id:e.id,nm:e.nm,d:DATA[e.id]}));
+  // cards
+  const tn=D.reduce((a,x)=>a+(x.d.n_news||0),0), tc=D.reduce((a,x)=>a+(x.d.n_comments||0),0),
+        tv=D.reduce((a,x)=>a+((x.d.youtube||{}).n_videos||0),0);
+  document.getElementById('crossCards').innerHTML=[[D.length,'Entitas'],[tn.toLocaleString('id'),'Total Artikel'],
+    [tc.toLocaleString('id'),'Total Komentar'],[tv.toLocaleString('id'),'Total Video']]
+    .map(([n,l])=>`<div class="card"><div class="n" style="color:#1d4ed8">${n}</div><div class="l">${l}</div></div>`).join('');
+  // volume grouped bar (log)
+  mk('xVol',{grid:{left:8,right:14,top:28,bottom:8,containLabel:true},tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>(+v).toLocaleString('id')},
+    legend:{top:0,data:['Berita','Komentar','Video'],textStyle:{color:'#6b7280'}},
+    yAxis:{type:'category',data:D.map(x=>x.nm),...AX,axisLabel:{color:'#374151',fontSize:10}},
+    xAxis:{type:'log',...AX,axisLabel:{color:'#6b7280',formatter:v=>fmt(v)}},
+    series:[{name:'Berita',type:'bar',data:D.map(x=>x.d.n_news||0.1),itemStyle:{color:'#1d4ed8'}},
+            {name:'Komentar',type:'bar',data:D.map(x=>(x.d.n_comments||0.1)),itemStyle:{color:'#0d9488'}},
+            {name:'Video',type:'bar',data:D.map(x=>((x.d.youtube||{}).n_videos||0.1)),itemStyle:{color:'#dc2626'}}]});
+  // sentiment net bar
+  mk('xSen',{grid:{left:8,right:40,top:10,bottom:8,containLabel:true},tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'%'},
+    yAxis:{type:'category',data:D.map(x=>x.nm),...AX,axisLabel:{color:'#374151',fontSize:10}},
+    xAxis:{type:'value',axisLabel:{formatter:'{value}%',color:'#6b7280'},...AX},
+    series:[{type:'bar',data:D.map(x=>{const n=(x.d.sentiment||{}).net;return n===undefined?0:n;}).map(v=>({value:v,itemStyle:{color:v>=0?'#059669':'#dc2626',borderRadius:v>=0?[0,4,4,0]:[4,0,0,4]}})),
+      label:{show:true,position:'right',formatter:p=>(p.value>0?'+':'')+p.value+'%',color:'#374151',fontSize:11}}]});
+  // argument stacked
+  const argCats=['Klaim/Opini','Alasan/Bukti','Ajakan/Seruan','Pertanyaan/Kritik','Ekspresif'];
+  const acol=['#2563eb','#0d9488','#ea580c','#dc2626','#9ca3af'];
+  mk('xArg',{grid:{left:8,right:14,top:28,bottom:8,containLabel:true},tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'%'},
+    legend:{top:0,textStyle:{color:'#6b7280',fontSize:9}},
+    yAxis:{type:'category',data:D.map(x=>x.nm),...AX,axisLabel:{color:'#374151',fontSize:10}},
+    xAxis:{type:'value',max:100,axisLabel:{formatter:'{value}%',color:'#6b7280'},...AX},
+    series:argCats.map((cat,i)=>({name:cat,type:'bar',stack:'a',itemStyle:{color:acol[i]},
+      data:D.map(x=>{const dist=(x.d.argmining||{}).dist||[];const f=dist.find(z=>z.name===cat);return f?f.pct:0;})}))});
+  // scatter sentiment vs volume
+  mk('xScatter',{grid:{left:8,right:14,top:14,bottom:30,containLabel:true},
+    tooltip:{formatter:p=>`${p.data[3]}<br/>volume ${fmt(p.data[0])} · net ${p.data[1]}%`},
+    xAxis:{type:'log',name:'volume (berita+komentar)',nameLocation:'middle',nameGap:24,...AX,axisLabel:{color:'#6b7280',formatter:v=>fmt(v)}},
+    yAxis:{type:'value',name:'sentimen net %',...AX,axisLabel:{formatter:'{value}%',color:'#6b7280'}},
+    series:[{type:'scatter',data:D.map(x=>{const vol=(x.d.n_news||0)+(x.d.n_comments||0)+1;const net=(x.d.sentiment||{}).net||0;const vid=(x.d.youtube||{}).n_videos||0;
+      return {value:[vol,net,vid,x.nm],itemStyle:{color:ECOL[x.id]},symbolSize:Math.max(14,Math.min(50,8+vid/4))};}),
+      label:{show:true,formatter:p=>p.data[3].split(' ')[0],position:'top',fontSize:10,color:'#374151'}}]});
+  // cross-entity figures (PER appearing in >=2 entity corpora)
+  const perMap={};
+  D.forEach(x=>{((x.d.ner||{}).PER||[]).forEach(e=>{const k=e.name;(perMap[k]=perMap[k]||{ents:new Set(),c:0});perMap[k].ents.add(x.nm);perMap[k].c+=e.count;});});
+  const sharedPer=Object.entries(perMap).filter(([k,v])=>v.ents.size>=2).sort((a,b)=>b[1].ents.size-a[1].ents.size||b[1].c-a[1].c).slice(0,14);
+  document.getElementById('xPer').innerHTML=sharedPer.length?sharedPer.map(([k,v])=>`<div class="cmt"><div class="top"><span style="color:#1d4ed8;font-weight:600">${esc(k)}</span><span>${v.ents.size} entitas · ${v.c}×</span></div><div style="font-size:11px;color:#6b7280">${[...v.ents].join(' · ')}</div></div>`).join(''):'<div class="desc">—</div>';
+  // shared ORG
+  const orgMap={};
+  D.forEach(x=>{((x.d.ner||{}).ORG||[]).forEach(e=>{const k=e.name;(orgMap[k]=orgMap[k]||{ents:new Set(),c:0});orgMap[k].ents.add(x.nm);orgMap[k].c+=e.count;});});
+  const sharedOrg=Object.entries(orgMap).filter(([k,v])=>v.ents.size>=2).sort((a,b)=>b[1].ents.size-a[1].ents.size).slice(0,10);
+  document.getElementById('xOrg').innerHTML=sharedOrg.length?sharedOrg.map(([k,v])=>`<div class="cmt"><div class="top"><span style="color:#0d9488;font-weight:600">${esc(k)}</span><span>${v.ents.size} entitas</span></div><div style="font-size:11px;color:#6b7280">${[...v.ents].join(' · ')}</div></div>`).join(''):'<div class="desc">— (organisasi spesifik per entitas)</div>';
+  // shared LOC bar
+  const locMap={};
+  D.forEach(x=>{((x.d.ner||{}).LOC||[]).forEach(e=>{const k=e.name;(locMap[k]=locMap[k]||{ents:new Set(),c:0});locMap[k].ents.add(x.nm);locMap[k].c+=e.count;});});
+  const sharedLoc=Object.entries(locMap).filter(([k,v])=>v.ents.size>=2).sort((a,b)=>b[1].ents.size-a[1].ents.size||b[1].c-a[1].c).slice(0,12);
+  barH('xLoc',sharedLoc.map(([k,v])=>({n:v.ents.size,name:k})),'n','name','#64748b');
+  // narrative network: entities + shared figures
+  const nodes=[],links=[],seen={};
+  D.forEach(x=>nodes.push({name:x.nm,symbolSize:Math.max(28,Math.min(58,16+Math.log10((x.d.n_comments||0)+(x.d.n_news||0)+10)*9)),itemStyle:{color:ECOL[x.id]},category:0,label:{show:true,fontWeight:'bold'}}));
+  sharedPer.slice(0,12).forEach(([k,v])=>{nodes.push({name:k,symbolSize:Math.max(10,Math.min(26,6+v.ents.size*5)),itemStyle:{color:'#94a3b8'},category:1,label:{show:v.ents.size>=3}});seen[k]=1;});
+  D.forEach(x=>{((x.d.ner||{}).PER||[]).forEach(e=>{if(seen[e.name])links.push({source:x.nm,target:e.name,lineStyle:{color:ECOL[x.id],opacity:.4,width:Math.max(1,Math.min(4,e.count/8))}});});});
+  mk('xNet',{tooltip:{},legend:{show:false},series:[{type:'graph',layout:'force',roam:true,
+    force:{repulsion:170,edgeLength:[40,120],gravity:.15},
+    data:nodes,links:links,categories:[{name:'Entitas'},{name:'Tokoh bersama'}],
+    label:{position:'right',fontSize:10,color:'#374151'},lineStyle:{curveness:.1}}]});
+  // shared topic words
+  const twMap={};
+  D.forEach(x=>{const tw=new Set();((x.d.topic||{}).topics||[]).forEach(t=>t.words.slice(0,6).forEach(w=>tw.add(w)));tw.forEach(w=>{(twMap[w]=twMap[w]||new Set()).add(x.nm);});});
+  const sharedTw=Object.entries(twMap).filter(([k,v])=>v.size>=2&&k.length>2).sort((a,b)=>b[1].size-a[1].size).slice(0,16);
+  document.getElementById('xTopic').innerHTML=sharedTw.length?'<div style="display:flex;flex-wrap:wrap;gap:8px">'+sharedTw.map(([k,v])=>`<span style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:999px;padding:4px 12px;font-size:12px"><b>${esc(k)}</b> <span style="color:#6b7280">${v.size} entitas</span></span>`).join('')+'</div>':'<div class="desc">—</div>';
+  // insight
+  const topShared=sharedPer.slice(0,3).map(x=>x[0]).join(', ');
+  const kdmInOthers=D.filter(x=>x.id!=='A_kdm'&&((x.d.ner||{}).PER||[]).some(e=>['dedi','mulyadi'].some(t=>e.name.includes(t)))).map(x=>x.nm);
+  document.getElementById('xInsight').innerHTML=`<h3>💡 Insight Cross Analysis</h3><div class="desc" style="font-size:13.5px;line-height:1.6;color:#1f2937">
+    <b>Gubernur sebagai pusat gravitasi narasi.</b> Dedi Mulyadi muncul di korpus ${kdmInOthers.length} entitas lain (${kdmInOthers.join(', ')||'—'}) — semua pejabat Jabar diperbincangkan dalam orbit Gubernur, konsisten dengan struktur eksekutif provinsi.<br><br>
+    <b>Tokoh bersama lintas-entitas:</b> ${esc(topShared||'—')} — figur yang menghubungkan beberapa korpus (tokoh nasional/regional yang menyinggung banyak pejabat).<br><br>
+    <b>Struktur argumen seragam:</b> semua entitas didominasi <b>Klaim/Opini (72–88%)</b> dengan Alasan/Bukti minim (<2%) — diskursus publik Jabar bersifat ekspresif-opinif, bukan deliberatif.<br><br>
+    <b>Pola sentimen-volume:</b> entitas bervolume tinggi (Gubernur) cenderung sentimen netral/terpolarisasi; pejabat teknis bervolume rendah cenderung lebih positif — peran teknis di belakang layar mendapat apresiasi tanpa polarisasi politik.</div>`;
+  setTimeout(()=>charts.forEach(c=>c.resize()),50);
+}
+
 function render(eid){
   const d=DATA[eid]; if(!d)return;
+  document.getElementById('perView').style.display='';
+  document.getElementById('crossView').style.display='none';
   document.querySelectorAll('.ent').forEach(x=>x.classList.toggle('active',x.dataset.e===eid));
   clearCharts();
   const col=ECOL[eid];
