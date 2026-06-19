@@ -23,7 +23,8 @@
   .ent.active{outline:2px solid var(--ec)}
   .ent .nm{font-weight:700;font-size:14px} .ent .rl{font-size:11px;color:var(--muted)}
   .ent .vol{font-size:11px;color:var(--muted);margin-top:3px}
-  .cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:6px 0 14px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin:6px 0 14px}
+  .vthumb{width:84px;height:48px;object-fit:cover;border-radius:6px;display:block}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 14px;box-shadow:0 1px 3px rgba(17,24,39,.04)}
   .card .n{font-size:22px;font-weight:700} .card .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
   .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:14px}
@@ -78,6 +79,16 @@
       <div id="cWords" class="chart"></div></div>
   </div>
 
+  <div id="ytWrap">
+    <div class="grid">
+      <div class="panel"><h3>🎬 Channel Paling Aktif</h3><div class="desc">Channel terbanyak unggah video</div><div id="cYtChannel" class="chart"></div></div>
+      <div class="panel"><h3>📅 Upload Video per Bulan</h3><div class="desc">Jumlah video diunggah per bulan</div><div id="cYtMonth" class="chart"></div></div>
+    </div>
+    <div class="grid one"><div class="panel"><h3>🎬 Video Terpopuler <span class="pill" id="ytViews"></span></h3>
+      <div class="desc">Video dengan views tertinggi yang menyebut entitas</div>
+      <div style="overflow-x:auto"><table id="ytTable"></table></div></div></div>
+  </div>
+
   <div class="grid">
     <div class="panel"><h3>🗣️ Contoh per Tipe Argumen</h3><div class="clist" id="argSamples"></div></div>
     <div class="panel"><h3>💬 Contoh Sentimen (pos/neg)</h3><div class="clist" id="senSamples"></div></div>
@@ -129,13 +140,13 @@ function render(eid){
   clearCharts();
   const col=ECOL[eid];
   // cards
-  const sen=d.sentiment||{}, arg=d.argmining||{};
-  document.getElementById('cards').innerHTML=[
-    [d.n_news||0,'Artikel'],[(d.n_comments||0).toLocaleString('id'),'Komentar'],
-    [(d.topic?d.topic.topics.length:0),'Topik'],
-    [(sen.net!==undefined?(sen.net>=0?'+':'')+sen.net+'%':'—'),'Sentimen net'],
-    [(arg.n||0).toLocaleString('id'),'Teks dianalisis']
-  ].map(([n,l])=>`<div class="card"><div class="n" style="color:${col}">${n}</div><div class="l">${l}</div></div>`).join('');
+  const sen=d.sentiment||{}, arg=d.argmining||{}, yt=d.youtube||null;
+  const cardRows=[
+    [d.n_news||0,'Artikel'],[(d.n_comments||0).toLocaleString('id'),'Komentar']];
+  if(yt){cardRows.push([yt.n_videos.toLocaleString('id'),'Video'],[fmt(yt.total_views),'Views YT']);}
+  cardRows.push([(d.topic?d.topic.topics.length:0),'Topik'],
+    [(sen.net!==undefined?(sen.net>=0?'+':'')+sen.net+'%':'—'),'Sentimen net']);
+  document.getElementById('cards').innerHTML=cardRows.map(([n,l])=>`<div class="card"><div class="n" style="color:${col}">${n}</div><div class="l">${l}</div></div>`).join('');
   // topic
   if(d.topic&&d.topic.topics){
     document.getElementById('topicSrc').textContent=d.topic.n_docs.toLocaleString('id')+' dok';
@@ -165,6 +176,21 @@ function render(eid){
         {name:'Positif',value:sen.pos,itemStyle:{color:SEN_COL.Positif}},{name:'Netral',value:sen.neu,itemStyle:{color:SEN_COL.Netral}},
         {name:'Negatif',value:sen.neg,itemStyle:{color:SEN_COL.Negatif}}],label:{color:'#374151',formatter:'{b}\n{d}%',fontSize:11}}]});
   } else mk('cSen',{title:{text:'data kurang',left:'center',top:'center',textStyle:{color:'#9ca3af',fontSize:12}}});
+  // YouTube metadata
+  if(yt){
+    document.getElementById('ytWrap').style.display='';
+    document.getElementById('ytViews').textContent=fmt(yt.total_views)+' views · '+yt.n_channels+' channel';
+    barH('cYtChannel',(yt.by_channel||[]).map(c=>({n:c.value,name:c.name})),'n','name','#dc2626');
+    const tm=yt.timeline_month||[];
+    mk('cYtMonth',{grid:{left:8,right:14,top:14,bottom:8,containLabel:true},tooltip:{trigger:'axis'},
+      xAxis:{type:'category',data:tm.map(x=>x.date),...AX,axisLabel:{color:'#6b7280',fontSize:10}},yAxis:{type:'value',...AX},
+      series:[{type:'line',smooth:true,symbol:'none',data:tm.map(x=>x.value),lineStyle:{color:col,width:2},itemStyle:{color:col},
+        areaStyle:{color:'rgba(37,99,235,.12)'}}]});
+    document.getElementById('ytTable').innerHTML='<thead><tr><th></th><th>Judul</th><th>Channel</th><th style="text-align:right">Views</th></tr></thead><tbody>'+
+      (yt.top_videos||[]).map(v=>`<tr><td>${v.thumbnail?`<a href="${v.url}" target="_blank"><img class="vthumb" src="${v.thumbnail}" loading="lazy"></a>`:''}</td>
+        <td><a href="${v.url}" target="_blank">${esc(v.title)}</a></td><td>${esc(v.channel)}</td>
+        <td style="text-align:right;white-space:nowrap">${v.views.toLocaleString('id')}</td></tr>`).join('')+'</tbody>';
+  } else { document.getElementById('ytWrap').style.display='none'; }
   // words
   barH('cWords',(d.news_words||[]).map(w=>({n:w.value,name:w.name})),'n','name',col);
   // arg samples
