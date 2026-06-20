@@ -148,7 +148,7 @@
   <div id="resumeView" style="display:none">
     <div class="panel" style="margin-bottom:14px;border-left:3px solid #f59e0b">
       <h3>📋 Resume Eksekutif — Temuan, Pain Point & Bahan Keputusan</h3>
-      <div class="desc">Saripati lintas 5 entitas Jawa Barat: <b>hanya poin penting & titik nyeri</b> untuk pengambilan keputusan. Tiap grafik diikuti tabel data sampel. Catatan bergaya campur — Indonesia · 🤠 Texan · 🇷🇺 Русский.</div>
+      <div class="desc">Saripati lintas 5 entitas Jawa Barat: <b>hanya poin penting & titik nyeri</b> untuk pengambilan keputusan. Tiap grafik diikuti tabel data sampel.</div>
       <div class="cards" id="rsHero" style="margin-top:10px"></div>
     </div>
 
@@ -279,40 +279,26 @@ function renderResume(){
     [tv.toLocaleString('id'),'Total Video'],[fmt(tw),'Total Views YT'],[avgBukti+'%','Rata² Bukti']]
     .map(([n,l])=>`<div class="card"><div class="n" style="color:#b45309">${n}</div><div class="l">${l}</div></div>`).join('');
   // pain points
-  const pain=(ttl,id,body,tx,ru)=>`<div class="pain"><div class="ttl">${ttl} <span class="pill">${id}</span></div>
-    <div class="body">${body}</div><div class="stamp">🤠 <span class="tl">${tx}</span><br>🇷🇺 <span class="tl">${ru}</span></div></div>`;
-  const high=(ttl,id,body,tx,ru)=>`<div class="high"><div class="ttl">${ttl} <span class="pill">${id}</span></div>
-    <div class="body">${body}</div><div class="stamp">🤠 <span class="tl">${tx}</span><br>🇷🇺 <span class="tl">${ru}</span></div></div>`;
+  const pain=(ttl,id,body)=>`<div class="pain"><div class="ttl">${ttl} <span class="pill">${id}</span></div>
+    <div class="body">${body}</div></div>`;
+  const high=(ttl,id,body)=>`<div class="high"><div class="ttl">${ttl} <span class="pill">${id}</span></div>
+    <div class="body">${body}</div></div>`;
   document.getElementById('rsPain').innerHTML=
     pain('🧪 Defisit bukti','semua entitas',
-      `Diskursus publik didominasi <b>Klaim/Opini (~${avgKlaim}%)</b> tapi <b>Alasan/Bukti hanya ${avgBukti}%</b>. Publik ramai berpendapat, nyaris tanpa argumen berbasis data.`,
-      'All hat, no cattle — folks holler plenty, bring mighty little proof.',
-      'Шума много — доказательств почти нет.')+
+      `Diskursus publik didominasi <b>Klaim/Opini (~${avgKlaim}%)</b> tapi <b>Alasan/Bukti hanya ${avgBukti}%</b>. Publik ramai berpendapat, nyaris tanpa argumen berbasis data.`)+
     pain('⚖️ Polarisasi Gubernur','A · Dedi Mulyadi',
-      `Paling banyak dibicarakan (<b>${fmt(kdm.total_views||(kdm.youtube||{}).total_views||0)} views</b>, ${(kdm.n_comments||0).toLocaleString('id')} komentar) tapi sentimen nyaris terbelah: <b>${(kdm.sentiment||{}).pos||0} positif vs ${(kdm.sentiment||{}).neg||0} negatif</b> (net hanya +${(kdm.sentiment||{}).net||0}%). Volume tinggi = polarisasi tinggi.`,
-      'Big rodeo, split crowd — half cheerin’, half hollerin’.',
-      'Чем громче слава, тем глубже раскол.')+
+      `Paling banyak dibicarakan (<b>${fmt(kdm.total_views||(kdm.youtube||{}).total_views||0)} views</b>, ${(kdm.n_comments||0).toLocaleString('id')} komentar) tapi sentimen nyaris terbelah: <b>${(kdm.sentiment||{}).pos||0} positif vs ${(kdm.sentiment||{}).neg||0} negatif</b> (net hanya +${(kdm.sentiment||{}).net||0}%). Volume tinggi = polarisasi tinggi.`)+
     pain('🛣️ Infrastruktur disorot','E · Dinas PU',
-      `Satu-satunya entitas dengan sentimen <b>negatif (net ${(pu.sentiment||{}).net||0}%)</b> — keluhan jalan, sampah, limbah & desa mendominasi. <b>0 video YouTube</b> = tidak ada counter-narasi.`,
-      'Roads ain’t talkin’ back — all gripes, no good word.',
-      'Дороги молчат — слышны одни жалобы.')+
+      `Satu-satunya entitas dengan sentimen <b>negatif (net ${(pu.sentiment||{}).net||0}%)</b> — keluhan jalan, sampah, limbah & desa mendominasi. <b>0 video YouTube</b> = tidak ada narasi penyeimbang.`)+
     pain('📡 Liputan timpang','D & E',
-      `Perhatian publik sangat tidak merata: Gubernur ${(kdm.n_comments||0).toLocaleString('id')} komentar, sedangkan Kadisdik hanya ${(purw.n_comments||0)} & PU ${(pu.n_comments||0)}. Pejabat teknis nyaris tak terdengar — opini publik sulit diukur.`,
-      'One loud bull, four quiet calves.',
-      'Один говорит — четверо в тени.');
+      `Perhatian publik sangat tidak merata: Gubernur ${(kdm.n_comments||0).toLocaleString('id')} komentar, sedangkan Kadisdik hanya ${(purw.n_comments||0)} & PU ${(pu.n_comments||0)}. Pejabat teknis nyaris tak terdengar — opini publik sulit diukur.`);
   document.getElementById('rsHigh').innerHTML=
     high('🌟 Apresiasi tertinggi','B · Herman Suryatman',
-      `Sekda punya sentimen <b>paling positif (net +${(herman.sentiment||{}).net||0}%)</b> dari 5 entitas — kerja teknokratis di belakang layar dihargai publik.`,
-      'Quiet hand, warmest welcome.',
-      'Тихо работает — народ хвалит.')+
+      `Sekda punya sentimen <b>paling positif (net +${(herman.sentiment||{}).net||0}%)</b> dari 5 entitas — kerja teknokratis di belakang layar dihargai publik.`)+
     high('📣 Jangkauan masif','A · Dedi Mulyadi',
-      `Corong komunikasi terkuat Jabar: <b>${((kdm.youtube||{}).n_videos||0)} video, ${fmt((kdm.youtube||{}).total_views||0)} views</b> YouTube — aset besar bila diarahkan ke narasi substantif.`,
-      'Biggest megaphone in the whole state.',
-      'Самый громкий рупор Западной Явы.')+
+      `Corong komunikasi terkuat Jabar: <b>${((kdm.youtube||{}).n_videos||0)} video, ${fmt((kdm.youtube||{}).total_views||0)} views</b> YouTube — aset besar bila diarahkan ke narasi substantif.`)+
     high('🧰 Teknis tanpa polarisasi','C & D',
-      `Wagub (net +${(erwan.sentiment||{}).net||0}%) & Kadisdik (net +${(purw.sentiment||{}).net||0}%) bervolume rendah tapi positif — peran teknis diapresiasi tanpa terseret polarisasi politik.`,
-      'Behind the chuckwagon, still gettin’ thanks.',
-      'В тени — но на хорошем счету.');
+      `Wagub (net +${(erwan.sentiment||{}).net||0}%) & Kadisdik (net +${(purw.sentiment||{}).net||0}%) bervolume rendah tapi positif — peran teknis diapresiasi tanpa terseret polarisasi politik.`);
   // grafik 1 — sentimen net
   mk('rsSen',{grid:{left:8,right:48,top:10,bottom:8,containLabel:true},tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'%'},
     yAxis:{type:'category',data:D.map(x=>x.nm),...AX,axisLabel:{color:'#374151',fontSize:11}},
@@ -357,9 +343,9 @@ function renderResume(){
   // verdict
   document.getElementById('rsVerdict').innerHTML=`<h3>💡 Verdict & Bahan Keputusan</h3>
     <div class="desc" style="font-size:13.5px;line-height:1.7;color:#1f2937">
-    <b>1. Naikkan mutu argumen, bukan cuma volume.</b> Dengan bukti hanya ${avgBukti}%, komunikasi publik perlu lebih banyak data, angka, & sebab-akibat — bukan klaim. <span class="tl">🤠 Quit jawin', start showin'. · 🇷🇺 Меньше слов — больше фактов.</span><br><br>
-    <b>2. Tangani isu infrastruktur secara aktif.</b> Dinas PU satu-satunya bersentimen negatif & tanpa kanal video — butuh narasi tandingan (progress jalan/sampah/limbah) yang terlihat. <span class="tl">🤠 Fix the road 'fore folks fix you. · 🇷🇺 Чини дорогу, пока не починили тебя.</span><br><br>
-    <b>3. Manfaatkan megafon Gubernur untuk pejabat teknis.</b> Jangkauan ${fmt((kdm.youtube||{}).total_views||0)} views bisa mengangkat Kadisdik/Wagub/PU yang positif tapi sepi liputan. <span class="tl">🤠 Lend the big horn to the quiet hands. · 🇷🇺 Дай тихим работникам громкий рупор.</span></div>`;
+    <b>1. Naikkan mutu argumen, bukan cuma volume.</b> Dengan bukti hanya ${avgBukti}%, komunikasi publik perlu lebih banyak data, angka, & sebab-akibat — bukan sekadar klaim.<br><br>
+    <b>2. Tangani isu infrastruktur secara aktif.</b> Dinas PU satu-satunya bersentimen negatif & tanpa kanal video — butuh narasi penyeimbang (progres jalan/sampah/limbah) yang terlihat publik.<br><br>
+    <b>3. Manfaatkan jangkauan Gubernur untuk pejabat teknis.</b> Jangkauan ${fmt((kdm.youtube||{}).total_views||0)} views bisa mengangkat Kadisdik/Wagub/PU yang positif tapi sepi liputan.</div>`;
   setTimeout(()=>charts.forEach(c=>c.resize()),50);
 }
 function renderCross(){
