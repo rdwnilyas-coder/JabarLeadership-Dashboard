@@ -80,6 +80,9 @@
       <div id="cWords" class="chart"></div></div>
   </div>
 
+  <div class="grid one" id="temporalWrap" style="display:none"><div class="panel"><h3>📈 Tren Temporal</h3>
+    <div class="desc">Volume berita (bar) & video (garis) per bulan, 2026</div><div id="cTemporal" class="chart"></div></div></div>
+
   <div class="grid three" id="crossIntraWrap" style="display:none">
     <div class="panel"><h3>🎭 Sentimen per Tokoh</h3><div class="desc">NER × sentimen — tokoh dibicarakan positif (hijau) / negatif (merah)</div><div id="cEntSen" class="chart tall"></div></div>
     <div class="panel"><h3>🧩 Sentimen per Topik</h3><div class="desc">topik mana memicu sentimen negatif</div><div id="cTopSen" class="chart tall"></div></div>
@@ -127,6 +130,10 @@
       <div class="panel"><h3>👥 Tokoh Disebut Lintas-Entitas</h3><div class="desc">Orang yang muncul di ≥2 korpus entitas</div><div class="clist" id="xPer"></div></div>
       <div class="panel"><h3>🏛️ Organisasi Lintas-Entitas</h3><div class="desc">Lembaga yang muncul di ≥2 korpus</div><div class="clist" id="xOrg"></div></div>
     </div>
+    <div class="grid one"><div class="panel"><h3>🗺️ Peta Liputan Jawa Barat (Kab/Kota)</h3>
+      <div class="desc">Intensitas penyebutan lokasi (NER) di korpus 5 entitas — warna = jumlah penyebutan. Pilih fokus:</div>
+      <div class="subtabs" id="mapSwitch" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"></div>
+      <div id="xMap" class="chart" style="height:520px"></div></div></div>
     <div class="grid one"><div class="panel"><h3>🧩 Irisan Kata-Topik Antar-Entitas</h3><div class="desc">Kata kunci topik yang dibagi beberapa entitas (indikasi isu bersama)</div><div class="clist" id="xTopic"></div></div></div>
     <div class="panel" id="xInsight" style="border-left:3px solid #1d4ed8"></div>
   </div>
@@ -160,6 +167,7 @@ let DATA={};
 Promise.all(ENTITIES.map(e=>fetch('data/'+e.id+'.json').then(r=>r.ok?r.json():null).catch(()=>null)))
 .then(arr=>{
   ENTITIES.forEach((e,i)=>{if(arr[i])DATA[e.id]=arr[i];});
+  fetch('data/jabar.geojson').then(r=>r.ok?r.json():null).then(gj=>{if(gj){try{echarts.registerMap('jabar',gj);JABAR_OK=true;}catch(e){}}}).catch(()=>{});
   const avail=ENTITIES.filter(e=>DATA[e.id]);
   document.getElementById('ents').innerHTML=avail.map(e=>{const d=DATA[e.id];
     return `<div class="ent" data-e="${e.id}" style="--ec:${ECOL[e.id]}"><div class="nm">${esc(e.nm)}</div>
@@ -171,6 +179,27 @@ Promise.all(ENTITIES.map(e=>fetch('data/'+e.id+'.json').then(r=>r.ok?r.json():nu
 });
 
 const ENT_NAMES={A_kdm:['dedi','mulyadi','kdm'],B_herman:['herman','suryatman'],C_erwan:['erwan','setiawan'],D_purwanto:['purwanto'],E_pu:['bina marga','dputr','pekerjaan umum','sda']};
+let JABAR_OK=false, mapChart=null;
+const SKIP_LOC=new Set(['jawa barat','jabar','indonesia','jakarta','jawa','jawa tengah','jateng','banten','bandung raya','dki jakarta','jabodetabek','nasional']);
+const KOTA_ONLY={depok:'Kota Depok',cimahi:'Kota Cimahi',banjar:'Kota Banjar'};
+function titleCase(s){return s.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');}
+function normRegion(s){s=(s||'').toLowerCase().trim();if(SKIP_LOC.has(s))return null;
+  if(s.startsWith('kota '))return 'Kota '+titleCase(s.slice(5));
+  if(KOTA_ONLY[s])return KOTA_ONLY[s];return titleCase(s);}
+function renderMap(scope){
+  if(!JABAR_OK)return;
+  const ents=ENTITIES.filter(e=>DATA[e.id]);
+  const regionSet=new Set((echarts.getMap('jabar').geoJson.features||[]).map(f=>f.properties.name));
+  const cnt={}, who={};
+  ents.forEach(e=>{ if(scope!=='all'&&scope!==e.id)return;
+    ((DATA[e.id].ner||{}).LOC||[]).forEach(le=>{const r=normRegion(le.name); if(r&&regionSet.has(r)){cnt[r]=(cnt[r]||0)+le.count;(who[r]=who[r]||new Set()).add(e.nm);}});});
+  const data=[...regionSet].map(n=>({name:n,value:cnt[n]||0}));
+  const maxv=Math.max(1,...data.map(d=>d.value));
+  mapChart=mk('xMap',{tooltip:{trigger:'item',formatter:p=>`<b>${p.name}</b><br/>${p.value||0} penyebutan${who[p.name]?'<br/>'+[...who[p.name]].join(', '):''}`},
+    visualMap:{min:0,max:maxv,left:'left',bottom:'8%',text:['banyak','sedikit'],calculable:true,inRange:{color:['#f1f5f9','#bfdbfe','#60a5fa','#2563eb','#1e3a8a']},textStyle:{color:'#374151'}},
+    series:[{type:'map',map:'jabar',roam:true,zoom:1.15,label:{show:false},emphasis:{label:{show:true,color:'#111'},itemStyle:{areaColor:'#fbbf24'}},
+      itemStyle:{borderColor:'#cbd5e1',borderWidth:.5},data:data}]});
+}
 function showCross(pill){
   document.querySelectorAll('.ent').forEach(x=>x.classList.remove('active')); pill.classList.add('active');
   document.getElementById('perView').style.display='none';
@@ -247,6 +276,16 @@ function renderCross(){
   D.forEach(x=>{const tw=new Set();((x.d.topic||{}).topics||[]).forEach(t=>t.words.slice(0,6).forEach(w=>tw.add(w)));tw.forEach(w=>{(twMap[w]=twMap[w]||new Set()).add(x.nm);});});
   const sharedTw=Object.entries(twMap).filter(([k,v])=>v.size>=2&&k.length>2).sort((a,b)=>b[1].size-a[1].size).slice(0,16);
   document.getElementById('xTopic').innerHTML=sharedTw.length?'<div style="display:flex;flex-wrap:wrap;gap:8px">'+sharedTw.map(([k,v])=>`<span style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:999px;padding:4px 12px;font-size:12px"><b>${esc(k)}</b> <span style="color:#6b7280">${v.size} entitas</span></span>`).join('')+'</div>':'<div class="desc">—</div>';
+  // peta Jawa Barat (switcher fokus: semua / per entitas)
+  const sw=document.getElementById('mapSwitch');
+  if(JABAR_OK){
+    sw.innerHTML=`<div class="subtab active" data-s="all" style="background:#1d4ed8;color:#fff;border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:12px">Semua entitas</div>`+
+      D.map(x=>`<div class="subtab" data-s="${x.id}" style="background:#f1f5f9;border:1px solid #e5e7eb;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:12px">${esc(x.nm.split(' ')[0])}</div>`).join('');
+    sw.querySelectorAll('.subtab').forEach(b=>b.onclick=()=>{
+      sw.querySelectorAll('.subtab').forEach(x=>{x.style.background='#f1f5f9';x.style.color='#374151';x.style.border='1px solid #e5e7eb';});
+      b.style.background='#1d4ed8';b.style.color='#fff';b.style.border='none';renderMap(b.dataset.s);});
+    renderMap('all');
+  } else { sw.innerHTML='<span class="desc">peta memuat…</span>'; setTimeout(()=>{if(JABAR_OK)renderCross();},500); }
   // insight
   const topShared=sharedPer.slice(0,3).map(x=>x[0]).join(', ');
   const kdmInOthers=D.filter(x=>x.id!=='A_kdm'&&((x.d.ner||{}).PER||[]).some(e=>['dedi','mulyadi'].some(t=>e.name.includes(t)))).map(x=>x.nm);
@@ -319,6 +358,16 @@ function render(eid){
   } else { document.getElementById('ytWrap').style.display='none'; }
   // words
   barH('cWords',(d.news_words||[]).map(w=>({n:w.value,name:w.name})),'n','name',col);
+  // temporal (news + video per month)
+  const nmM={}; (d.news_timeline||[]).forEach(x=>nmM[x.date]=x.value);
+  const ytM={}; ((d.youtube||{}).timeline_month||[]).forEach(x=>ytM[x.date]=x.value);
+  const tmonths=[...new Set([...Object.keys(nmM),...Object.keys(ytM)])].filter(m=>m>='2026').sort();
+  if(tmonths.length){document.getElementById('temporalWrap').style.display='';
+    mk('cTemporal',{grid:{left:8,right:14,top:28,bottom:8,containLabel:true},tooltip:{trigger:'axis'},legend:{top:0,data:['Berita','Video'],textStyle:{color:'#6b7280'}},
+      xAxis:{type:'category',data:tmonths,...AX,axisLabel:{color:'#6b7280',fontSize:10}},yAxis:{type:'value',...AX},
+      series:[{name:'Berita',type:'bar',data:tmonths.map(m=>nmM[m]||0),itemStyle:{color:col,borderRadius:[3,3,0,0]}},
+              {name:'Video',type:'line',smooth:true,symbol:'circle',data:tmonths.map(m=>ytM[m]||0),itemStyle:{color:'#dc2626'},lineStyle:{color:'#dc2626',width:2}}]});
+  } else document.getElementById('temporalWrap').style.display='none';
   // cross intra-entity (sentimen per tokoh / per topik / argumen x sentimen)
   const es=d.entity_sentiment, ts=d.topic_sentiment, axs=d.arg_sentiment;
   const divbar=(id,items,lk)=>{const it=items.slice(0,12);mk(id,{grid:{left:8,right:38,top:8,bottom:8,containLabel:true},
