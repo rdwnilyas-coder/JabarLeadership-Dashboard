@@ -40,6 +40,13 @@
   .cmt .top{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px}
   .cmt .body{font-size:13px}
   .clist{display:grid;gap:8px}
+  .tl{color:#6b7280;font-style:italic;font-size:11.5px}
+  .pain{background:#fef2f2;border:1px solid #fecaca;border-left:3px solid #dc2626;border-radius:10px;padding:11px 13px}
+  .high{background:#f0fdf4;border:1px solid #bbf7d0;border-left:3px solid #059669;border-radius:10px;padding:11px 13px}
+  .pain .ttl{font-weight:700;color:#b91c1c;font-size:13.5px} .high .ttl{font-weight:700;color:#047857;font-size:13.5px}
+  .pain .body,.high .body{font-size:13px;margin:4px 0 6px} .stamp{font-size:11px;color:#6b7280}
+  .rstbl-wrap{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+  .rstbl-wrap .cap{font-size:11px;color:var(--muted);margin-bottom:5px}
   footer{color:var(--muted);font-size:12px;text-align:center;padding:24px 16px 40px}
   @media(max-width:900px){.cards{grid-template-columns:repeat(3,1fr)}.grid,.grid.three{grid-template-columns:1fr}.ents{gap:6px}}
 </style>
@@ -137,6 +144,43 @@
     <div class="grid one"><div class="panel"><h3>🧩 Irisan Kata-Topik Antar-Entitas</h3><div class="desc">Kata kunci topik yang dibagi beberapa entitas (indikasi isu bersama)</div><div class="clist" id="xTopic"></div></div></div>
     <div class="panel" id="xInsight" style="border-left:3px solid #1d4ed8"></div>
   </div>
+
+  <div id="resumeView" style="display:none">
+    <div class="panel" style="margin-bottom:14px;border-left:3px solid #f59e0b">
+      <h3>📋 Resume Eksekutif — Temuan, Pain Point & Bahan Keputusan</h3>
+      <div class="desc">Saripati lintas 5 entitas Jawa Barat: <b>hanya poin penting & titik nyeri</b> untuk pengambilan keputusan. Tiap grafik diikuti tabel data sampel. Catatan bergaya campur — Indonesia · 🤠 Texan · 🇷🇺 Русский.</div>
+      <div class="cards" id="rsHero" style="margin-top:10px"></div>
+    </div>
+
+    <div class="grid">
+      <div class="panel" style="border-left:3px solid #dc2626"><h3>🚨 Pain Points</h3>
+        <div class="desc">Titik nyeri yang menuntut perhatian</div><div id="rsPain" class="clist"></div></div>
+      <div class="panel" style="border-left:3px solid #059669"><h3>✅ Highlights</h3>
+        <div class="desc">Sinyal positif yang layak diperkuat</div><div id="rsHigh" class="clist"></div></div>
+    </div>
+
+    <div class="grid one"><div class="panel"><h3>😊 Sentimen Bersih per Entitas <span class="pill">grafik 1</span></h3>
+      <div class="desc">% positif − % negatif. Hijau = apresiasi, merah = sorotan negatif.</div>
+      <div id="rsSen" class="chart"></div>
+      <div class="rstbl-wrap"><div class="cap">📄 Data sampel:</div><div style="overflow-x:auto"><table id="rsSenTbl"></table></div></div></div></div>
+
+    <div class="grid one"><div class="panel"><h3>📊 Volume Liputan vs Jangkauan <span class="pill">grafik 2</span></h3>
+      <div class="desc">Artikel · komentar · video (skala log). Lihat ketimpangan perhatian antar pejabat.</div>
+      <div id="rsVol" class="chart"></div>
+      <div class="rstbl-wrap"><div class="cap">📄 Data sampel:</div><div style="overflow-x:auto"><table id="rsVolTbl"></table></div></div></div></div>
+
+    <div class="grid one"><div class="panel"><h3>🗣️ Defisit Bukti: Klaim vs Alasan/Bukti <span class="pill">grafik 3</span></h3>
+      <div class="desc">Diskursus didominasi klaim/opini, minim alasan/bukti — indikasi debat publik tidak deliberatif.</div>
+      <div id="rsArg" class="chart"></div>
+      <div class="rstbl-wrap"><div class="cap">📄 Data sampel (komposisi argumen, %):</div><div style="overflow-x:auto"><table id="rsArgTbl"></table></div></div></div></div>
+
+    <div class="grid one"><div class="panel"><h3>🧩 Topik Paling Negatif per Entitas <span class="pill">grafik 4</span></h3>
+      <div class="desc">Isu yang memicu sentimen paling negatif di tiap korpus — peta risiko reputasi.</div>
+      <div id="rsTop" class="chart"></div>
+      <div class="rstbl-wrap"><div class="cap">📄 Data sampel:</div><div style="overflow-x:auto"><table id="rsTopTbl"></table></div></div></div></div>
+
+    <div class="panel" id="rsVerdict" style="border-left:3px solid #1d4ed8"></div>
+  </div>
 </div>
 
 <footer>Jabar Leadership Analytics · berita + YouTube · model NLP lokal · <a href="https://github.com/rdwnilyas-coder/JabarLeadership-Dashboard">source</a></footer>
@@ -169,13 +213,16 @@ Promise.all(ENTITIES.map(e=>fetch('data/'+e.id+'.json').then(r=>r.ok?r.json():nu
   ENTITIES.forEach((e,i)=>{if(arr[i])DATA[e.id]=arr[i];});
   fetch('data/jabar.geojson').then(r=>r.ok?r.json():null).then(gj=>{if(gj){try{echarts.registerMap('jabar',gj);JABAR_OK=true;}catch(e){}}}).catch(()=>{});
   const avail=ENTITIES.filter(e=>DATA[e.id]);
-  document.getElementById('ents').innerHTML=avail.map(e=>{const d=DATA[e.id];
+  document.getElementById('ents').innerHTML=
+    `<div class="ent" data-e="__resume__" style="--ec:#f59e0b;background:#fffbeb"><div class="nm">📋 Resume</div><div class="rl">ringkasan eksekutif</div><div class="vol">pain point · highlight · keputusan</div></div>`
+    +avail.map(e=>{const d=DATA[e.id];
     return `<div class="ent" data-e="${e.id}" style="--ec:${ECOL[e.id]}"><div class="nm">${esc(e.nm)}</div>
       <div class="rl">${esc(e.rl)}</div><div class="vol">${d.n_news||0} artikel · ${(d.n_comments||0).toLocaleString('id')} komentar</div></div>`;}).join('')
     +`<div class="ent" data-e="__cross__" style="--ec:#1d4ed8;background:#eff6ff"><div class="nm">🔗 Cross Analysis</div><div class="rl">lintas 5 entitas</div><div class="vol">irisan · jaringan · isu bersama</div></div>`;
   document.querySelectorAll('.ent').forEach(el=>el.onclick=()=>{
-    if(el.dataset.e==='__cross__'){showCross(el);} else {render(el.dataset.e);}});
-  if(avail.length) render(avail[0].id);
+    if(el.dataset.e==='__resume__'){showResume(el);} else if(el.dataset.e==='__cross__'){showCross(el);} else {render(el.dataset.e);}});
+  const rp=document.querySelector('.ent[data-e="__resume__"]');
+  if(rp) showResume(rp); else if(avail.length) render(avail[0].id);
 });
 
 const ENT_NAMES={A_kdm:['dedi','mulyadi','kdm'],B_herman:['herman','suryatman'],C_erwan:['erwan','setiawan'],D_purwanto:['purwanto'],E_pu:['bina marga','dputr','pekerjaan umum','sda']};
@@ -203,8 +250,117 @@ function renderMap(scope){
 function showCross(pill){
   document.querySelectorAll('.ent').forEach(x=>x.classList.remove('active')); pill.classList.add('active');
   document.getElementById('perView').style.display='none';
+  document.getElementById('resumeView').style.display='none';
   document.getElementById('crossView').style.display='';
   renderCross();
+}
+function showResume(pill){
+  document.querySelectorAll('.ent').forEach(x=>x.classList.remove('active')); pill.classList.add('active');
+  document.getElementById('perView').style.display='none';
+  document.getElementById('crossView').style.display='none';
+  document.getElementById('resumeView').style.display='';
+  renderResume();
+}
+const argPct=(d,key)=>{const dist=(d.argmining||{}).dist||[];const f=dist.find(z=>(z.name||'').includes(key));return f?+f.pct:0;};
+const worstTopic=d=>{const ts=(d.topic_sentiment||[]).slice().sort((a,b)=>(a.net||0)-(b.net||0));return ts.length?ts[0]:null;};
+function renderResume(){
+  clearCharts();
+  const D=ENTITIES.filter(e=>DATA[e.id]).map(e=>({id:e.id,nm:e.nm,rl:e.rl,d:DATA[e.id]}));
+  const tn=D.reduce((a,x)=>a+(x.d.n_news||0),0), tc=D.reduce((a,x)=>a+(x.d.n_comments||0),0),
+        tv=D.reduce((a,x)=>a+((x.d.youtube||{}).n_videos||0),0),
+        tw=D.reduce((a,x)=>a+((x.d.youtube||{}).total_views||0),0);
+  const avgKlaim=(D.reduce((a,x)=>a+argPct(x.d,'Klaim'),0)/D.length).toFixed(0);
+  const avgBukti=(D.reduce((a,x)=>a+argPct(x.d,'Alasan'),0)/D.length).toFixed(1);
+  const get=id=>D.find(x=>x.id===id)||{d:{}};
+  const kdm=get('A_kdm').d, herman=get('B_herman').d, erwan=get('C_erwan').d, purw=get('D_purwanto').d, pu=get('E_pu').d;
+  // hero
+  document.getElementById('rsHero').innerHTML=[
+    [D.length,'Entitas'],[tn.toLocaleString('id'),'Total Artikel'],[tc.toLocaleString('id'),'Total Komentar'],
+    [tv.toLocaleString('id'),'Total Video'],[fmt(tw),'Total Views YT'],[avgBukti+'%','Rata² Bukti']]
+    .map(([n,l])=>`<div class="card"><div class="n" style="color:#b45309">${n}</div><div class="l">${l}</div></div>`).join('');
+  // pain points
+  const pain=(ttl,id,body,tx,ru)=>`<div class="pain"><div class="ttl">${ttl} <span class="pill">${id}</span></div>
+    <div class="body">${body}</div><div class="stamp">🤠 <span class="tl">${tx}</span><br>🇷🇺 <span class="tl">${ru}</span></div></div>`;
+  const high=(ttl,id,body,tx,ru)=>`<div class="high"><div class="ttl">${ttl} <span class="pill">${id}</span></div>
+    <div class="body">${body}</div><div class="stamp">🤠 <span class="tl">${tx}</span><br>🇷🇺 <span class="tl">${ru}</span></div></div>`;
+  document.getElementById('rsPain').innerHTML=
+    pain('🧪 Defisit bukti','semua entitas',
+      `Diskursus publik didominasi <b>Klaim/Opini (~${avgKlaim}%)</b> tapi <b>Alasan/Bukti hanya ${avgBukti}%</b>. Publik ramai berpendapat, nyaris tanpa argumen berbasis data.`,
+      'All hat, no cattle — folks holler plenty, bring mighty little proof.',
+      'Шума много — доказательств почти нет.')+
+    pain('⚖️ Polarisasi Gubernur','A · Dedi Mulyadi',
+      `Paling banyak dibicarakan (<b>${fmt(kdm.total_views||(kdm.youtube||{}).total_views||0)} views</b>, ${(kdm.n_comments||0).toLocaleString('id')} komentar) tapi sentimen nyaris terbelah: <b>${(kdm.sentiment||{}).pos||0} positif vs ${(kdm.sentiment||{}).neg||0} negatif</b> (net hanya +${(kdm.sentiment||{}).net||0}%). Volume tinggi = polarisasi tinggi.`,
+      'Big rodeo, split crowd — half cheerin’, half hollerin’.',
+      'Чем громче слава, тем глубже раскол.')+
+    pain('🛣️ Infrastruktur disorot','E · Dinas PU',
+      `Satu-satunya entitas dengan sentimen <b>negatif (net ${(pu.sentiment||{}).net||0}%)</b> — keluhan jalan, sampah, limbah & desa mendominasi. <b>0 video YouTube</b> = tidak ada counter-narasi.`,
+      'Roads ain’t talkin’ back — all gripes, no good word.',
+      'Дороги молчат — слышны одни жалобы.')+
+    pain('📡 Liputan timpang','D & E',
+      `Perhatian publik sangat tidak merata: Gubernur ${(kdm.n_comments||0).toLocaleString('id')} komentar, sedangkan Kadisdik hanya ${(purw.n_comments||0)} & PU ${(pu.n_comments||0)}. Pejabat teknis nyaris tak terdengar — opini publik sulit diukur.`,
+      'One loud bull, four quiet calves.',
+      'Один говорит — четверо в тени.');
+  document.getElementById('rsHigh').innerHTML=
+    high('🌟 Apresiasi tertinggi','B · Herman Suryatman',
+      `Sekda punya sentimen <b>paling positif (net +${(herman.sentiment||{}).net||0}%)</b> dari 5 entitas — kerja teknokratis di belakang layar dihargai publik.`,
+      'Quiet hand, warmest welcome.',
+      'Тихо работает — народ хвалит.')+
+    high('📣 Jangkauan masif','A · Dedi Mulyadi',
+      `Corong komunikasi terkuat Jabar: <b>${((kdm.youtube||{}).n_videos||0)} video, ${fmt((kdm.youtube||{}).total_views||0)} views</b> YouTube — aset besar bila diarahkan ke narasi substantif.`,
+      'Biggest megaphone in the whole state.',
+      'Самый громкий рупор Западной Явы.')+
+    high('🧰 Teknis tanpa polarisasi','C & D',
+      `Wagub (net +${(erwan.sentiment||{}).net||0}%) & Kadisdik (net +${(purw.sentiment||{}).net||0}%) bervolume rendah tapi positif — peran teknis diapresiasi tanpa terseret polarisasi politik.`,
+      'Behind the chuckwagon, still gettin’ thanks.',
+      'В тени — но на хорошем счету.');
+  // grafik 1 — sentimen net
+  mk('rsSen',{grid:{left:8,right:48,top:10,bottom:8,containLabel:true},tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'%'},
+    yAxis:{type:'category',data:D.map(x=>x.nm),...AX,axisLabel:{color:'#374151',fontSize:11}},
+    xAxis:{type:'value',axisLabel:{formatter:'{value}%',color:'#6b7280'},...AX},
+    series:[{type:'bar',data:D.map(x=>{const v=(x.d.sentiment||{}).net||0;return {value:v,itemStyle:{color:v>=0?'#059669':'#dc2626',borderRadius:v>=0?[0,4,4,0]:[4,0,0,4]}};}),
+      label:{show:true,position:'right',formatter:p=>(p.value>0?'+':'')+p.value+'%',color:'#374151',fontSize:11}}]});
+  document.getElementById('rsSenTbl').innerHTML='<thead><tr><th>Entitas</th><th>Positif</th><th>Netral</th><th>Negatif</th><th>Net</th><th>Baca</th></tr></thead><tbody>'+
+    D.map(x=>{const s=x.d.sentiment||{};const n=s.net||0;return `<tr><td><b>${esc(x.nm)}</b></td><td>${s.pos||0}</td><td>${s.neu||0}</td><td>${s.neg||0}</td>
+      <td style="color:${n>=0?'#059669':'#dc2626'};font-weight:600">${n>=0?'+':''}${n}%</td>
+      <td style="color:#6b7280">${n>=15?'apresiasi kuat':n<0?'disorot negatif':'terpolarisasi'}</td></tr>`;}).join('')+'</tbody>';
+  // grafik 2 — volume
+  mk('rsVol',{grid:{left:8,right:14,top:28,bottom:8,containLabel:true},tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>Math.round(v).toLocaleString('id')},
+    legend:{top:0,data:['Artikel','Komentar','Video'],textStyle:{color:'#6b7280'}},
+    yAxis:{type:'category',data:D.map(x=>x.nm),...AX,axisLabel:{color:'#374151',fontSize:10}},
+    xAxis:{type:'log',...AX,axisLabel:{formatter:v=>fmt(v),color:'#6b7280'}},
+    series:[{name:'Artikel',type:'bar',data:D.map(x=>x.d.n_news||0.1),itemStyle:{color:'#1d4ed8'}},
+            {name:'Komentar',type:'bar',data:D.map(x=>x.d.n_comments||0.1),itemStyle:{color:'#0d9488'}},
+            {name:'Video',type:'bar',data:D.map(x=>((x.d.youtube||{}).n_videos)||0.1),itemStyle:{color:'#dc2626'}}]});
+  document.getElementById('rsVolTbl').innerHTML='<thead><tr><th>Entitas</th><th style="text-align:right">Artikel</th><th style="text-align:right">Komentar</th><th style="text-align:right">Video</th><th style="text-align:right">Views YT</th></tr></thead><tbody>'+
+    D.map(x=>{const yt=x.d.youtube||{};return `<tr><td><b>${esc(x.nm)}</b></td><td style="text-align:right">${(x.d.n_news||0).toLocaleString('id')}</td>
+      <td style="text-align:right">${(x.d.n_comments||0).toLocaleString('id')}</td><td style="text-align:right">${(yt.n_videos||0).toLocaleString('id')}</td>
+      <td style="text-align:right">${yt.total_views?fmt(yt.total_views):'—'}</td></tr>`;}).join('')+'</tbody>';
+  // grafik 3 — klaim vs bukti
+  mk('rsArg',{grid:{left:8,right:42,top:28,bottom:8,containLabel:true},tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'%'},
+    legend:{top:0,data:['Klaim/Opini','Alasan/Bukti'],textStyle:{color:'#6b7280'}},
+    yAxis:{type:'category',data:D.map(x=>x.nm),...AX,axisLabel:{color:'#374151',fontSize:10}},
+    xAxis:{type:'value',max:100,axisLabel:{formatter:'{value}%',color:'#6b7280'},...AX},
+    series:[{name:'Klaim/Opini',type:'bar',data:D.map(x=>argPct(x.d,'Klaim')),itemStyle:{color:'#2563eb',borderRadius:[0,4,4,0]},label:{show:true,position:'right',formatter:'{c}%',fontSize:9,color:'#6b7280'}},
+            {name:'Alasan/Bukti',type:'bar',data:D.map(x=>argPct(x.d,'Alasan')),itemStyle:{color:'#dc2626',borderRadius:[0,4,4,0]},label:{show:true,position:'right',formatter:'{c}%',fontSize:9,color:'#dc2626'}}]});
+  const acats=['Klaim','Alasan','Ajakan','Pertanyaan','Ekspresif'];
+  document.getElementById('rsArgTbl').innerHTML='<thead><tr><th>Entitas</th><th style="text-align:right">Klaim/Opini</th><th style="text-align:right">Alasan/Bukti</th><th style="text-align:right">Ajakan</th><th style="text-align:right">Kritik</th><th style="text-align:right">Ekspresif</th></tr></thead><tbody>'+
+    D.map(x=>`<tr><td><b>${esc(x.nm)}</b></td>`+acats.map((c,i)=>`<td style="text-align:right${i===1?';color:#dc2626;font-weight:600':''}">${argPct(x.d,c)}%</td>`).join('')+`</tr>`).join('')+'</tbody>';
+  // grafik 4 — topik negatif
+  const wt=D.map(x=>({nm:x.nm,t:worstTopic(x.d)})).filter(z=>z.t);
+  mk('rsTop',{grid:{left:8,right:46,top:10,bottom:8,containLabel:true},tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const z=wt[p[0].dataIndex];return `<b>${esc(z.nm)}</b><br/>${esc(z.t.label)}<br/>net ${z.t.net}% · n=${z.t.n}`;}},
+    yAxis:{type:'category',data:wt.map(z=>z.nm),...AX,axisLabel:{color:'#374151',fontSize:10}},
+    xAxis:{type:'value',axisLabel:{formatter:'{value}%',color:'#6b7280'},...AX},
+    series:[{type:'bar',data:wt.map(z=>z.t.net),itemStyle:{color:'#dc2626',borderRadius:[4,0,0,4]},label:{show:true,position:'left',formatter:p=>p.value+'%',fontSize:10,color:'#dc2626'}}]});
+  document.getElementById('rsTopTbl').innerHTML='<thead><tr><th>Entitas</th><th>Topik (kata kunci)</th><th style="text-align:right">Net</th><th style="text-align:right">Dok</th></tr></thead><tbody>'+
+    wt.map(z=>`<tr><td><b>${esc(z.nm)}</b></td><td style="color:#374151">${esc(z.t.label)}</td>
+      <td style="text-align:right;color:#dc2626;font-weight:600">${z.t.net}%</td><td style="text-align:right">${z.t.n}</td></tr>`).join('')+'</tbody>';
+  // verdict
+  document.getElementById('rsVerdict').innerHTML=`<h3>💡 Verdict & Bahan Keputusan</h3>
+    <div class="desc" style="font-size:13.5px;line-height:1.7;color:#1f2937">
+    <b>1. Naikkan mutu argumen, bukan cuma volume.</b> Dengan bukti hanya ${avgBukti}%, komunikasi publik perlu lebih banyak data, angka, & sebab-akibat — bukan klaim. <span class="tl">🤠 Quit jawin', start showin'. · 🇷🇺 Меньше слов — больше фактов.</span><br><br>
+    <b>2. Tangani isu infrastruktur secara aktif.</b> Dinas PU satu-satunya bersentimen negatif & tanpa kanal video — butuh narasi tandingan (progress jalan/sampah/limbah) yang terlihat. <span class="tl">🤠 Fix the road 'fore folks fix you. · 🇷🇺 Чини дорогу, пока не починили тебя.</span><br><br>
+    <b>3. Manfaatkan megafon Gubernur untuk pejabat teknis.</b> Jangkauan ${fmt((kdm.youtube||{}).total_views||0)} views bisa mengangkat Kadisdik/Wagub/PU yang positif tapi sepi liputan. <span class="tl">🤠 Lend the big horn to the quiet hands. · 🇷🇺 Дай тихим работникам громкий рупор.</span></div>`;
+  setTimeout(()=>charts.forEach(c=>c.resize()),50);
 }
 function renderCross(){
   clearCharts();
@@ -301,6 +457,7 @@ function render(eid){
   const d=DATA[eid]; if(!d)return;
   document.getElementById('perView').style.display='';
   document.getElementById('crossView').style.display='none';
+  document.getElementById('resumeView').style.display='none';
   document.querySelectorAll('.ent').forEach(x=>x.classList.toggle('active',x.dataset.e===eid));
   clearCharts();
   const col=ECOL[eid];
