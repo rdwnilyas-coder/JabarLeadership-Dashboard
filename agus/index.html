@@ -350,34 +350,39 @@ function renderResume(){
         tw=D.reduce((a,x)=>a+((x.d.youtube||{}).total_views||0),0);
   const avgKlaim=(D.reduce((a,x)=>a+argPct(x.d,'Klaim'),0)/D.length).toFixed(0);
   const avgBukti=(D.reduce((a,x)=>a+argPct(x.d,'Alasan'),0)/D.length).toFixed(1);
-  const get=id=>D.find(x=>x.id===id)||{d:{}};
-  const kdm=get('A_kdm').d, herman=get('B_herman').d, erwan=get('C_erwan').d, purw=get('D_purwanto').d, pu=get('E_pu').d;
   // hero
   document.getElementById('rsHero').innerHTML=[
-    [D.length,'Entitas'],[tn.toLocaleString('id'),'Total Artikel'],[tc.toLocaleString('id'),'Total Komentar'],
+    [D.length,'Entitas/Peran'],[tn.toLocaleString('id'),'Total Artikel'],[tc.toLocaleString('id'),'Total Komentar'],
     [tv.toLocaleString('id'),'Total Video'],[fmt(tw),'Total Views YT'],[avgBukti+'%','Rata² Bukti']]
     .map(([n,l])=>`<div class="card"><div class="n" style="color:#b45309">${n}</div><div class="l">${l}</div></div>`).join('');
-  // pain points
-  const pain=(ttl,id,body)=>`<div class="pain"><div class="ttl">${ttl} <span class="pill">${id}</span></div>
-    <div class="body">${body}</div></div>`;
-  const high=(ttl,id,body)=>`<div class="high"><div class="ttl">${ttl} <span class="pill">${id}</span></div>
-    <div class="body">${body}</div></div>`;
-  document.getElementById('rsPain').innerHTML=
-    pain('🧪 Defisit bukti','semua entitas',
-      `Diskursus publik didominasi <b>Klaim/Opini (~${avgKlaim}%)</b> tapi <b>Alasan/Bukti hanya ${avgBukti}%</b>. Publik ramai berpendapat, nyaris tanpa argumen berbasis data.`)+
-    pain('⚖️ Polarisasi Gubernur','A · Dedi Mulyadi',
-      `Paling banyak dibicarakan (<b>${fmt(kdm.total_views||(kdm.youtube||{}).total_views||0)} views</b>, ${(kdm.n_comments||0).toLocaleString('id')} komentar) tapi sentimen nyaris terbelah: <b>${(kdm.sentiment||{}).pos||0} positif vs ${(kdm.sentiment||{}).neg||0} negatif</b> (net hanya +${(kdm.sentiment||{}).net||0}%). Volume tinggi = polarisasi tinggi.`)+
-    pain('🛣️ Infrastruktur disorot','E · Dinas PU',
-      `Satu-satunya entitas dengan sentimen <b>negatif (net ${(pu.sentiment||{}).net||0}%)</b> — keluhan jalan, sampah, limbah & desa mendominasi. <b>0 video YouTube</b> = tidak ada narasi penyeimbang.`)+
-    pain('📡 Liputan timpang','D & E',
-      `Perhatian publik sangat tidak merata: Gubernur ${(kdm.n_comments||0).toLocaleString('id')} komentar, sedangkan Kadisdik hanya ${(purw.n_comments||0)} & PU ${(pu.n_comments||0)}. Pejabat teknis nyaris tak terdengar — opini publik sulit diukur.`);
-  document.getElementById('rsHigh').innerHTML=
-    high('🌟 Apresiasi tertinggi','B · Herman Suryatman',
-      `Sekda punya sentimen <b>paling positif (net +${(herman.sentiment||{}).net||0}%)</b> dari 5 entitas — kerja teknokratis di belakang layar dihargai publik.`)+
-    high('📣 Jangkauan masif','A · Dedi Mulyadi',
-      `Corong komunikasi terkuat Jabar: <b>${((kdm.youtube||{}).n_videos||0)} video, ${fmt((kdm.youtube||{}).total_views||0)} views</b> YouTube — aset besar bila diarahkan ke narasi substantif.`)+
-    high('🧰 Teknis tanpa polarisasi','C & D',
-      `Wagub (net +${(erwan.sentiment||{}).net||0}%) & Kadisdik (net +${(purw.sentiment||{}).net||0}%) bervolume rendah tapi positif — peran teknis diapresiasi tanpa terseret polarisasi politik.`);
+  // pain points & highlights — data-driven (generic for any entity set)
+  const pain=(ttl,id,body)=>`<div class="pain"><div class="ttl">${ttl} <span class="pill">${id}</span></div><div class="body">${body}</div></div>`;
+  const high=(ttl,id,body)=>`<div class="high"><div class="ttl">${ttl} <span class="pill">${id}</span></div><div class="body">${body}</div></div>`;
+  const sn=x=>(x.d.sentiment||{}).net; const has=x=>sn(x)!==undefined;
+  const bySen=D.filter(has).slice().sort((a,b)=>sn(a)-sn(b));
+  const worst=bySen[0], worst2=bySen[1], best=bySen[bySen.length-1];
+  const byVol=D.slice().sort((a,b)=>((b.d.n_news||0)+(b.d.n_comments||0))-((a.d.n_news||0)+(a.d.n_comments||0)));
+  const topVol=byVol[0], lowVol=byVol[byVol.length-1];
+  let pains='';
+  pains+=pain('🧪 Defisit bukti','semua peran',
+    `Diskursus didominasi <b>Klaim/Opini (~${avgKlaim}%)</b> tapi <b>Alasan/Bukti hanya ${avgBukti}%</b> — ramai berpendapat, minim argumen berbasis data.`);
+  if(worst&&sn(worst)<0)pains+=pain('⚠️ Sorotan paling negatif',esc(worst.nm),
+    `Sentimen <b>paling negatif (net ${sn(worst)}%)</b> dari semua peran${(worst.d.topic_sentiment||[]).length?` — dipicu isu "${esc(((worst.d.topic_sentiment||[]).slice().sort((a,b)=>a.net-b.net)[0]||{}).label||'')}"`:''}. Butuh penanganan & narasi penyeimbang.`);
+  if(worst2&&sn(worst2)<0)pains+=pain('📉 Tekanan lanjutan',esc(worst2.nm),
+    `Juga bersentimen negatif (net ${sn(worst2)}%) — isu meluas ke lebih dari satu peran, indikasi tema yang sama menekan beberapa lini.`);
+  pains+=pain('📡 Liputan timpang',`${esc(topVol.nm)} ↔ ${esc(lowVol.nm)}`,
+    `Perhatian publik tak merata: <b>${esc(topVol.nm)}</b> ${((topVol.d.n_news||0)+(topVol.d.n_comments||0)).toLocaleString('id')} jejak vs <b>${esc(lowVol.nm)}</b> ${((lowVol.d.n_news||0)+(lowVol.d.n_comments||0)).toLocaleString('id')} — sebagian peran sulit diukur opininya.`);
+  document.getElementById('rsPain').innerHTML=pains;
+  let highs='';
+  if(best&&sn(best)!==undefined)highs+=high('🌟 Sentimen terbaik',esc(best.nm),
+    `Sentimen <b>${sn(best)>=0?'paling positif':'paling tinggi'} (net ${sn(best)>0?'+':''}${sn(best)}%)</b> — sisi yang paling diapresiasi publik, layak diperkuat.`);
+  const topYt=D.filter(x=>(x.d.youtube||{}).total_views).sort((a,b)=>(b.d.youtube.total_views)-(a.d.youtube.total_views))[0];
+  if(topYt)highs+=high('📣 Jangkauan terbesar',esc(topYt.nm),
+    `Kanal terkuat: <b>${(topYt.d.youtube.n_videos||0)} video, ${fmt(topYt.d.youtube.total_views)} views</b> — aset komunikasi bila diarahkan ke narasi substantif.`);
+  const igE=D.find(x=>x.d.instagram);
+  if(igE)highs+=high('📸 Kanal sosial aktif',esc(igE.nm),
+    `Aktif di Instagram (<b>${igE.d.instagram.n_posts||0} posting</b> terindeks) — membangun kepercayaan komunitas lewat konten konsisten, bukan iklan.`);
+  document.getElementById('rsHigh').innerHTML=highs||'<div class="desc">—</div>';
   // grafik 1 — sentimen net
   mk('rsSen',{grid:{left:8,right:48,top:10,bottom:8,containLabel:true},tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'%'},
     yAxis:{type:'category',data:D.map(x=>x.nm),...AX,axisLabel:{color:'#374151',fontSize:11}},
@@ -420,11 +425,12 @@ function renderResume(){
     wt.map(z=>`<tr><td><b>${esc(z.nm)}</b></td><td style="color:#374151">${esc(z.t.label)}</td>
       <td style="text-align:right;color:#dc2626;font-weight:600">${z.t.net}%</td><td style="text-align:right">${z.t.n}</td></tr>`).join('')+'</tbody>';
   // verdict
+  const vWorst=worst?esc(worst.nm):'peran tersorot', vBest=best?esc(best.nm):'peran terkuat';
   document.getElementById('rsVerdict').innerHTML=`<h3>💡 Verdict & Bahan Keputusan</h3>
     <div class="desc" style="font-size:13.5px;line-height:1.7;color:#1f2937">
     <b>1. Naikkan mutu argumen, bukan cuma volume.</b> Dengan bukti hanya ${avgBukti}%, komunikasi publik perlu lebih banyak data, angka, & sebab-akibat — bukan sekadar klaim.<br><br>
-    <b>2. Tangani isu infrastruktur secara aktif.</b> Dinas PU satu-satunya bersentimen negatif & tanpa kanal video — butuh narasi penyeimbang (progres jalan/sampah/limbah) yang terlihat publik.<br><br>
-    <b>3. Manfaatkan jangkauan Gubernur untuk pejabat teknis.</b> Jangkauan ${fmt((kdm.youtube||{}).total_views||0)} views bisa mengangkat Kadisdik/Wagub/PU yang positif tapi sepi liputan.</div>`;
+    <b>2. Tangani isu paling tersorot secara aktif.</b> <b>${vWorst}</b> bersentimen paling negatif — butuh penanganan substantif & narasi penyeimbang yang terlihat publik, bukan sekadar bantahan.<br><br>
+    <b>3. Perkuat & manfaatkan sisi positif.</b> <b>${vBest}</b> adalah aset reputasi terbaik — jadikan jangkar untuk menyeimbangkan isu-isu yang menekan peran lain.</div>`;
   setTimeout(()=>charts.forEach(c=>c.resize()),50);
 }
 function renderCross(){
@@ -507,14 +513,17 @@ function renderCross(){
       b.style.background='#1d4ed8';b.style.color='#fff';b.style.border='none';renderMap(b.dataset.s);});
     renderMap('all');
   } else { sw.innerHTML='<span class="desc">peta memuat…</span>'; setTimeout(()=>{if(JABAR_OK)renderCross();},500); }
-  // insight
+  // insight — data-driven untuk satu tokoh lintas peran/lembaga
   const topShared=sharedPer.slice(0,3).map(x=>x[0]).join(', ');
-  const kdmInOthers=D.filter(x=>x.id!=='A_kdm'&&((x.d.ner||{}).PER||[]).some(e=>['dedi','mulyadi'].some(t=>e.name.includes(t)))).map(x=>x.nm);
+  const senArr=D.filter(x=>(x.d.sentiment||{}).net!==undefined).sort((a,b)=>(a.d.sentiment.net)-(b.d.sentiment.net));
+  const negE=senArr[0], posE=senArr[senArr.length-1];
+  const avgK=(D.reduce((a,x)=>a+argPct(x.d,'Klaim'),0)/D.length).toFixed(0);
+  const avgB=(D.reduce((a,x)=>a+argPct(x.d,'Alasan'),0)/D.length).toFixed(1);
   document.getElementById('xInsight').innerHTML=`<h3>💡 Insight Cross Analysis</h3><div class="desc" style="font-size:13.5px;line-height:1.6;color:#1f2937">
-    <b>Gubernur sebagai pusat gravitasi narasi.</b> Dedi Mulyadi muncul di korpus ${kdmInOthers.length} entitas lain (${kdmInOthers.join(', ')||'—'}) — semua pejabat Jabar diperbincangkan dalam orbit Gubernur, konsisten dengan struktur eksekutif provinsi.<br><br>
-    <b>Tokoh bersama lintas-entitas:</b> ${esc(topShared||'—')} — figur yang menghubungkan beberapa korpus (tokoh nasional/regional yang menyinggung banyak pejabat).<br><br>
-    <b>Struktur argumen seragam:</b> semua entitas didominasi <b>Klaim/Opini (72–88%)</b> dengan Alasan/Bukti minim (<2%) — diskursus publik Jabar bersifat ekspresif-opinif, bukan deliberatif.<br><br>
-    <b>Pola sentimen-volume:</b> entitas bervolume tinggi (Gubernur) cenderung sentimen netral/terpolarisasi; pejabat teknis bervolume rendah cenderung lebih positif — peran teknis di belakang layar mendapat apresiasi tanpa polarisasi politik.</div>`;
+    <b>Satu tokoh, banyak peran.</b> Dr. H.R. Agus Sriyanta tampil lintas lembaga — sebagai Ketua BMPS Jabar (advokasi sekolah swasta), Komut RS Islam Aysha (kesehatan humanis), dan Ketua YPI Ar-Rahman (pendidikan-olahraga). Tiap peran punya panggung & sentimen sendiri.<br><br>
+    ${negE?`<b>Titik tekan:</b> peran <b>${esc(negE.nm)}</b> bersentimen paling negatif (net ${negE.d.sentiment.net}%) — terkait polemik SPMB/sekolah swasta vs Pemprov. ${posE?`Sebaliknya <b>${esc(posE.nm)}</b> paling positif (net ${posE.d.sentiment.net>0?'+':''}${posE.d.sentiment.net}%).`:''}<br><br>`:''}
+    ${topShared?`<b>Figur penghubung lintas-korpus:</b> ${esc(topShared)} — tokoh yang muncul di beberapa peran (mis. Gubernur Dedi Mulyadi sebagai lawan-argumen di isu pendidikan).<br><br>`:''}
+    <b>Struktur argumen:</b> didominasi <b>Klaim/Opini (~${avgK}%)</b> dengan Alasan/Bukti hanya <b>${avgB}%</b> — diskursus seputar Agus bersifat opinif-argumentatif, ruang untuk komunikasi berbasis data masih besar.</div>`;
   setTimeout(()=>charts.forEach(c=>c.resize()),50);
 }
 
