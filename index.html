@@ -282,7 +282,7 @@ Promise.all(ENTITIES.map(e=>fetch('data/'+e.id+'.json').then(r=>r.ok?r.json():nu
   // mobile dropdown mirrors the pills
   const sel=document.getElementById('entSel');
   sel.innerHTML=`<option value="__resume__">📋 Resume — ringkasan eksekutif</option>`
-    +avail.map(e=>`<option value="${e.id}">${esc(e.nm)} — ${esc(e.rl)}</option>`).join('')
+    +avail.map(e=>`<option value="${e.id}">👤 ${esc(e.nm)} — ${esc(e.rl)}</option>`).join('')
     +`<option value="__cross__">🔗 Cross Analysis — lintas 5 entitas</option>`
     +`<option value="__stories__">📖 Stories — 10 narasi 5W1H</option>`;
   sel.onchange=()=>{const el=document.querySelector('.ent[data-e="'+sel.value+'"]');if(el)el.click();};
