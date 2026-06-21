@@ -51,6 +51,9 @@
   .rstbl-wrap{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
   .rstbl-wrap .cap{font-size:11px;color:var(--muted);margin-bottom:5px}
   .stnav{display:flex;flex-direction:column;gap:7px}
+  .stSel{display:none;width:100%;padding:11px 13px;font-size:14px;font-weight:600;color:var(--ink);
+    background:var(--panel) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='1.6'/></svg>") no-repeat right 13px center;
+    border:1px solid var(--line);border-radius:10px;-webkit-appearance:none;appearance:none}
   .stnav .it{display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;transition:.12s}
   .stnav .it:hover{border-color:#be123c;box-shadow:0 2px 8px rgba(190,18,60,.08)}
   .stnav .it.active{border-color:#be123c;background:#fff1f2}
@@ -84,7 +87,8 @@
   footer{color:var(--muted);font-size:12px;text-align:center;padding:24px 16px 40px}
   @media(max-width:900px){.cards{grid-template-columns:repeat(3,1fr)}.grid,.grid.three{grid-template-columns:1fr}
     .ents{display:none}.entSel{display:block}
-    #stLayout{grid-template-columns:1fr!important}#stLayout>.panel:first-child{position:static!important}}
+    #stLayout{grid-template-columns:1fr!important}#stLayout>.panel:first-child{position:static!important}
+    .stnav{display:none}.stSel{display:block}}
 </style>
 </head>
 <body>
@@ -225,7 +229,9 @@
       <div class="desc" id="stIntro">Gabungan topik modeling 5 entitas. Tiap cerita memakai kerangka <b>5W1H + What Now</b> dengan grafik, tabel, dan contoh data kualitatif — serta <b>peran tiap entitas</b> dijelaskan eksplisit.</div>
     </div>
     <div class="grid" style="grid-template-columns:340px 1fr;align-items:start" id="stLayout">
-      <div class="panel" style="position:sticky;top:10px"><h3 style="font-size:13px;margin-bottom:8px">Daftar Cerita</h3><div class="stnav" id="stNav"></div></div>
+      <div class="panel" id="stListPanel" style="position:sticky;top:10px"><h3 style="font-size:13px;margin-bottom:8px">Daftar Cerita</h3>
+        <select class="stSel" id="stSel" aria-label="Pilih cerita"></select>
+        <div class="stnav" id="stNav"></div></div>
       <div id="stBody"></div>
     </div>
   </div>
@@ -615,6 +621,9 @@ function renderStories(){
   nav.innerHTML=sd.stories.map((s,i)=>`<div class="it ${i===stSel?'active':''}" data-i="${i}"><div class="rk">${s.rank}</div>
     <div><div class="ti">${esc(s.title)}</div><div class="tg">${(s.tags||[]).slice(0,4).join(' · ')}</div></div></div>`).join('');
   nav.querySelectorAll('.it').forEach(el=>el.onclick=()=>{stSel=+el.dataset.i;renderStories();window.scrollTo({top:0,behavior:'smooth'});});
+  const ssel=document.getElementById('stSel');
+  ssel.innerHTML=sd.stories.map((s,i)=>`<option value="${i}" ${i===stSel?'selected':''}>${s.rank}. ${esc(s.title)}</option>`).join('');
+  ssel.onchange=()=>{stSel=+ssel.value;renderStories();window.scrollTo({top:0,behavior:'smooth'});};
   renderStory(sd.stories[stSel]);
 }
 function renderStory(s){
