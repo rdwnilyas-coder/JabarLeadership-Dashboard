@@ -18,6 +18,9 @@
   header .meta{margin-top:8px;font-size:12px;color:#bfdbfe}
   .wrap{max-width:1180px;margin:0 auto;padding:0 16px}
   .ents{display:flex;gap:8px;margin:-28px auto 14px;position:relative;z-index:2;flex-wrap:wrap}
+  .entSel{display:none;width:100%;margin:-28px 0 14px;position:relative;z-index:2;padding:12px 14px;font-size:15px;font-weight:600;
+    color:var(--ink);background:var(--panel) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='1.6'/></svg>") no-repeat right 14px center;
+    border:1px solid var(--line);border-radius:12px;box-shadow:0 4px 14px rgba(17,24,39,.08);-webkit-appearance:none;appearance:none}
   .ent{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 16px;cursor:pointer;
     box-shadow:0 4px 14px rgba(17,24,39,.06);transition:.15s;border-top:3px solid var(--ec)}
   .ent.active{outline:2px solid var(--ec)}
@@ -79,7 +82,8 @@
   .argq{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 11px;margin-bottom:7px;font-size:12.5px}
   .argtag{display:inline-block;font-size:10px;font-weight:700;color:#fff;border-radius:5px;padding:1px 7px;margin-right:7px}
   footer{color:var(--muted);font-size:12px;text-align:center;padding:24px 16px 40px}
-  @media(max-width:900px){.cards{grid-template-columns:repeat(3,1fr)}.grid,.grid.three{grid-template-columns:1fr}.ents{gap:6px}
+  @media(max-width:900px){.cards{grid-template-columns:repeat(3,1fr)}.grid,.grid.three{grid-template-columns:1fr}
+    .ents{display:none}.entSel{display:block}
     #stLayout{grid-template-columns:1fr!important}#stLayout>.panel:first-child{position:static!important}}
 </style>
 </head>
@@ -92,6 +96,7 @@
 
 <div class="wrap">
   <div class="ents" id="ents"></div>
+  <select class="entSel" id="entSel" aria-label="Pilih tampilan"></select>
   <div id="perView">
   <div class="cards" id="cards"></div>
 
@@ -268,12 +273,20 @@ Promise.all(ENTITIES.map(e=>fetch('data/'+e.id+'.json').then(r=>r.ok?r.json():nu
     +`<div class="ent" data-e="__stories__" style="--ec:#be123c;background:#fff1f2"><div class="nm">📖 Stories</div><div class="rl">10 narasi 5W1H</div><div class="vol">event beririsan · peran entitas</div></div>`;
   document.querySelectorAll('.ent').forEach(el=>el.onclick=()=>{
     if(el.dataset.e==='__resume__'){showResume(el);} else if(el.dataset.e==='__cross__'){showCross(el);} else if(el.dataset.e==='__stories__'){showStories(el);} else {render(el.dataset.e);}});
+  // mobile dropdown mirrors the pills
+  const sel=document.getElementById('entSel');
+  sel.innerHTML=`<option value="__resume__">📋 Resume — ringkasan eksekutif</option>`
+    +avail.map(e=>`<option value="${e.id}">${esc(e.nm)} — ${esc(e.rl)}</option>`).join('')
+    +`<option value="__cross__">🔗 Cross Analysis — lintas 5 entitas</option>`
+    +`<option value="__stories__">📖 Stories — 10 narasi 5W1H</option>`;
+  sel.onchange=()=>{const el=document.querySelector('.ent[data-e="'+sel.value+'"]');if(el)el.click();};
   const hash=(location.hash||'').replace('#','');
   const hp=hash?document.querySelector('.ent[data-e="__'+hash+'__"]'):null;
   const rp=document.querySelector('.ent[data-e="__resume__"]');
   if(hp&&hash==='stories'){showStories(hp);}
   else if(hp&&hash==='cross'){showCross(hp);}
   else if(rp) showResume(rp); else if(avail.length) render(avail[0].id);
+  const act=document.querySelector('.ent.active'); if(act) sel.value=act.dataset.e;
 });
 
 const ENT_NAMES={A_kdm:['dedi','mulyadi','kdm'],B_herman:['herman','suryatman'],C_erwan:['erwan','setiawan'],D_purwanto:['purwanto'],E_pu:['bina marga','dputr','pekerjaan umum','sda']};
